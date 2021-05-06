@@ -8,31 +8,90 @@ from loguru import logger
 
 app = FastAPI()
 
+HOST="localhost"
+PORT="8000"
+BASEURL = f"http://{HOST}:{PORT}"
+MAIN_NAVI = {
+    'docs': app.docs_url,
+    'home': f"{BASEURL}/",
+    "service_types": f"{BASEURL}/service_types",
+}
+
+
 @app.get("/")
 def index():
     return {
-        "docs": app.docs_url,
-        "service_types": app.servers
+        "nav": MAIN_NAVI,
     }
 
 
 @app.get("/service_types")
 def service_types():
-    return aiven.get_service_types()
+    service_types = aiven.get_service_types()
+    return {
+        "nav": MAIN_NAVI,
+        'service_types': [
+            {'name': key, 'url': f"{BASEURL}/service_types/{key}"} for key in service_types["service_types"].keys()
+        ]
+    }
 
 
 @app.get("/service_types/{service_type}")
 def service_type(service_type):
-    serfice_types = aiven.get_service_types().get('service_types', {})
-    return serfice_types.get(service_type)
+    service_types = aiven.get_service_types().get('service_types', {})
+    properties = service_types.get(service_type)
+    _plans_base_url = f"{BASEURL}/service_types/{service_type}/service_plans/"
 
+    def versions(props):
+        #schema = props.get("user_config_schema", {})
+        #props2 = schema.get("properties", {})
+        #kafka_version = props2.get("kafka_version", {})
+        #kafka_versions = kafka_version.get("enum", [])
+        #return kafka_versions
+        return aiven.get_service_versions(service_type)
+
+    return {
+        "nav": MAIN_NAVI,
+        "service_type": {
+            "name": service_type,
+            "description": properties.get("description"),
+            "versions" : {
+                "latest_available_version": properties.get("latest_available_version"),
+                "default_version": properties.get("default_version"),
+                #"all_versions": versions(properties),
+                "all_versions": f"{BASEURL}/service_types/{service_type}/versions"
+            },
+            "plans": {
+                "url": _plans_base_url,
+                "shortcuts": {
+                    plan.get("service_plan") : {
+                        "url": f"{_plans_base_url}{plan.get('service_plan')}/"
+                    }
+                    for plan in properties.get("service_plans")
+                }
+            },
+            #"properties" : properties,
+        },
+    }
+
+@app.get("/service_types/{service_type}/versions")
+def service_versions(service_type):
+    return {
+        "nav": MAIN_NAVI,
+        "service_type": {
+            "name": service_type,
+            "url": f"{BASEURL}/service_types/{service_type}/"
+        },
+        "versions": aiven.get_service_versions(service_type)
+    }
 
 @app.get("/service_types/{service_type}/service_plans")
 def service_plans(service_type):
-    serfice_types = aiven.get_service_types().get('service_types', {})
+    service_types = aiven.get_service_types().get('service_types', {})
     plans = {
-        'service': {
-            'type': service_type,
+        "nav": MAIN_NAVI,
+        'service_type': {
+            'name': service_type,
             'url': f"http://localhost:8000/service_types/{service_type}"
         },
         'plans': [
@@ -40,7 +99,7 @@ def service_plans(service_type):
                 'plan': plan.get('service_plan'),
                 'url': f"http://localhost:8000/service_types/{service_type}/service_plans/{plan.get('service_plan')}"
             }
-            for plan in serfice_types.get(service_type).get('service_plans') if plan.get('service_plan') != plan
+            for plan in service_types.get(service_type).get('service_plans') if plan.get('service_plan') != plan
         ]
     }
     return plans
@@ -52,6 +111,11 @@ def service_plan(service_type, plan):
     plans = [p for p in serfice_types.get(service_type).get('service_plans') if p.get('service_plan') == plan]
     assert len(plans) == 1
     return {
+        "nav": MAIN_NAVI,
+        'service_type': {
+            'name': service_type,
+            'url': f"http://localhost:8000/service_types/{service_type}"
+        },
         "all_plans": {
             "url": f"http://localhost:8000/service_types/{service_type}/service_plans"
         },
@@ -68,22 +132,24 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
     url = f"http://localhost:8000/service_types/{service_type}/service_plans/{plan}/regions?"
 
     FIELDS = {"id", "disk_space_mb", "price_usd", "node_memory_mb"}
-    service_types = aiven.get_service_types().get('service_types', {})
-    plans = [p for p in service_types.get(service_type).get('service_plans') if p.get('service_plan') == plan]
-    assert len(plans) == 1
-    p = plans.pop()
+    _service_plans = aiven.get_service_types().get('service_types', {}).get(service_type).get('service_plans', {})
+    p = _find_plan(_service_plans, plan)
 
     regions: dict = p.get("regions", dict())
     num_regions = len(regions)
     region_keys = [k for k in regions.keys()]
-    ordered_list = OrderedDict()
-    region_keys.sort()
 
-    # 1: Order
+    # Filter
+    for region in regions:
+        pass
+
+    # Order
+    ordered_list = OrderedDict()
+    region_keys.sort()      # TODO proper sorting
     for k in region_keys:
         ordered_list[k] = regions.get(k)
 
-    # 2: Paginate
+    # Paginate
     if paginate_by:
         def chunks(data):
             it = iter(data)
@@ -112,7 +178,7 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
         "meta": {
             "navi": {
                 "all_plans": f"http://localhost:8000/service_types/{service_type}/service_plans",
-                "this_plan": f"http://localhost:8000/service_types/{service_type}/service_plans",
+                "this_plan": f"http://localhost:8000/service_types/{service_type}/service_plans/{plan}",
             },
             "filtering": {
                 "is_filtered": filter is not None,
@@ -126,6 +192,13 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
         },
         "data" : ordered_list
     }
+
+
+def _find_plan(_service_plans, plan):
+    plans = [p for p in _service_plans if p.get('service_plan') == plan]
+    assert len(plans) == 1
+    p = plans.pop()
+    return p
 
 
 def pagelink(url, paginate_by, page_num):
