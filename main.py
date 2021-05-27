@@ -14,7 +14,7 @@ PORT = env.get("PORT", "8000")
 BASEURL = env.get("BASEURL", f"http://{HOST}:{PORT}")
 
 MAIN_NAVI = {
-    'docs': app.docs_url,
+    'docs': f"{BASEURL}{app.docs_url}",
     'home': f"{BASEURL}/",
     "service_types": f"{BASEURL}/service_types",
 }
