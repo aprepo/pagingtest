@@ -15,6 +15,7 @@ BASEURL = env.get("BASEURL", f"http://{HOST}:{PORT}")
 
 MAIN_NAVI = {
     'docs': f"{BASEURL}{app.docs_url}",
+    'redoc': f"{BASEURL}/redoc",
     'home': f"{BASEURL}/",
     "service_types": f"{BASEURL}/service_types",
 }
