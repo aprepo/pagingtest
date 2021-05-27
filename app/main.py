@@ -7,6 +7,7 @@ import uvicorn
 from app import aiven
 from app import basic_types as types
 from app import responses
+from app import project, service
 
 app = FastAPI()
 
@@ -21,6 +22,8 @@ MAIN_NAVI = {
     "service_types": f"{BASEURL}/service_types",
 }
 
+app.include_router(project.routers.router, prefix="/projects")
+app.include_router(service.routers.router, prefix="/services")
 
 @app.get("/", response_model=responses.AivenIndexResponse)
 def index():
