@@ -6,6 +6,40 @@ import uvicorn
 import aiven
 from loguru import logger
 from os import environ as env
+from enum import Enum
+from pydantic import BaseModel, AnyUrl
+from typing import List, Optional
+
+
+class ServiceType(Enum):
+    kafka = "kafka"
+    m3db = "m3db"
+    m3aggregator = "m3aggregator"
+    mysql = "mysql"
+    pg = "pg"
+    redis = "redis"
+    cassandra = "cassandra"
+    grafana = "grafana"
+    influxdb = "influxdb"
+    kafka_connect = "kafka_connect"
+    kafka_mirrormaker = "kafka_mirrormaker"
+
+
+class AivenBaseModel(BaseModel):
+    docs: AnyUrl
+    redoc: AnyUrl
+    home: AnyUrl
+    service_types: AnyUrl
+
+
+class ServiceTypeListItem(BaseModel):
+    name: ServiceType
+    url: AnyUrl
+
+
+class ServiceTypeListResponse(AivenBaseModel):
+    service_types: List[ServiceTypeListItem]
+
 
 app = FastAPI()
 
@@ -21,14 +55,12 @@ MAIN_NAVI = {
 }
 
 
-@app.get("/")
+@app.get("/", response_model=AivenBaseModel)
 def index():
-    return {
-        "nav": MAIN_NAVI,
-    }
+    return MAIN_NAVI
 
 
-@app.get("/service_types")
+@app.get("/service_types", response_model=ServiceTypeListResponse)
 def service_types():
     service_types = aiven.get_service_types()
     return {
@@ -40,7 +72,7 @@ def service_types():
 
 
 @app.get("/service_types/{service_type}")
-def service_type(service_type):
+def service_type(service_type:ServiceType):
     service_types = aiven.get_service_types().get('service_types', {})
     properties = service_types.get(service_type)
     _plans_base_url = f"{BASEURL}/service_types/{service_type}/service_plans/"
