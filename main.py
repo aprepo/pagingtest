@@ -11,8 +11,8 @@ app = FastAPI()
 
 HOST = env.get("HOST", "localhost")
 PORT = env.get("PORT", "8000")
+BASEURL = env.get("BASEURL", f"http://{HOST}:{PORT}")
 
-BASEURL = f"http://{HOST}:{PORT}"
 MAIN_NAVI = {
     'docs': app.docs_url,
     'home': f"{BASEURL}/",
