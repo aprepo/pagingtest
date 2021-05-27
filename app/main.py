@@ -1,14 +1,12 @@
+from os import environ as env
 from collections import OrderedDict
 from itertools import islice
 
 from fastapi import FastAPI
 import uvicorn
-import aiven
-from loguru import logger
-from os import environ as env
-import basic_types as types
-import responses
-from loguru import logger
+from app import aiven
+from app import basic_types as types
+from app import responses
 
 app = FastAPI()
 

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, AnyUrl
 from typing import List, Optional
-import basic_types as types
+from app import basic_types as types
 
 
 class AivenResponse(BaseModel):
