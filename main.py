@@ -6,40 +6,9 @@ import uvicorn
 import aiven
 from loguru import logger
 from os import environ as env
-from enum import Enum
-from pydantic import BaseModel, AnyUrl
-from typing import List, Optional
-
-
-class ServiceType(Enum):
-    kafka = "kafka"
-    m3db = "m3db"
-    m3aggregator = "m3aggregator"
-    mysql = "mysql"
-    pg = "pg"
-    redis = "redis"
-    cassandra = "cassandra"
-    grafana = "grafana"
-    influxdb = "influxdb"
-    kafka_connect = "kafka_connect"
-    kafka_mirrormaker = "kafka_mirrormaker"
-
-
-class AivenBaseModel(BaseModel):
-    docs: AnyUrl
-    redoc: AnyUrl
-    home: AnyUrl
-    service_types: AnyUrl
-
-
-class ServiceTypeListItem(BaseModel):
-    name: ServiceType
-    url: AnyUrl
-
-
-class ServiceTypeListResponse(AivenBaseModel):
-    service_types: List[ServiceTypeListItem]
-
+import basic_types as types
+import responses
+from loguru import logger
 
 app = FastAPI()
 
@@ -55,12 +24,15 @@ MAIN_NAVI = {
 }
 
 
-@app.get("/", response_model=AivenBaseModel)
+@app.get("/", response_model=responses.AivenIndexResponse)
 def index():
-    return MAIN_NAVI
+    return {
+        "nav": MAIN_NAVI,
+        "service_types": f"{BASEURL}/service_types"
+    }
 
 
-@app.get("/service_types", response_model=ServiceTypeListResponse)
+@app.get("/service_types", response_model=responses.ServiceTypeListResponse)
 def service_types():
     service_types = aiven.get_service_types()
     return {
@@ -72,29 +44,22 @@ def service_types():
 
 
 @app.get("/service_types/{service_type}")
-def service_type(service_type:ServiceType):
+def service_type(service_type: types.ServiceType):
     service_types = aiven.get_service_types().get('service_types', {})
-    properties = service_types.get(service_type)
-    _plans_base_url = f"{BASEURL}/service_types/{service_type}/service_plans/"
-
-    def versions(props):
-        #schema = props.get("user_config_schema", {})
-        #props2 = schema.get("properties", {})
-        #kafka_version = props2.get("kafka_version", {})
-        #kafka_versions = kafka_version.get("enum", [])
-        #return kafka_versions
-        return aiven.get_service_versions(service_type)
-
+    if service_type.value in service_types:
+        properties = service_types.get(service_type.value)
+    else:
+        raise Exception(f"Unknown service type: {service_type.value}")
+    _plans_base_url = f"{BASEURL}/service_types/{service_type.value}/service_plans/"
     return {
         "nav": MAIN_NAVI,
         "service_type": {
-            "name": service_type,
+            "name": service_type.value,
             "description": properties.get("description"),
             "versions" : {
                 "latest_available_version": properties.get("latest_available_version"),
                 "default_version": properties.get("default_version"),
-                #"all_versions": versions(properties),
-                "all_versions": f"{BASEURL}/service_types/{service_type}/versions"
+                "all_versions": f"{BASEURL}/service_types/{service_type.value}/versions"
             },
             "plans": {
                 "url": _plans_base_url,
@@ -105,7 +70,6 @@ def service_type(service_type:ServiceType):
                     for plan in properties.get("service_plans")
                 }
             },
-            #"properties" : properties,
         },
     }
 
