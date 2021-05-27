@@ -5,11 +5,13 @@ from fastapi import FastAPI
 import uvicorn
 import aiven
 from loguru import logger
+from os import environ as env
 
 app = FastAPI()
 
-HOST="localhost"
-PORT="8000"
+HOST = env.get("HOST", "localhost")
+PORT = env.get("PORT", "8000")
+
 BASEURL = f"http://{HOST}:{PORT}"
 MAIN_NAVI = {
     'docs': app.docs_url,
@@ -92,12 +94,12 @@ def service_plans(service_type):
         "nav": MAIN_NAVI,
         'service_type': {
             'name': service_type,
-            'url': f"http://localhost:8000/service_types/{service_type}"
+            'url': f"{BASEURL}/service_types/{service_type}"
         },
         'plans': [
             {
                 'plan': plan.get('service_plan'),
-                'url': f"http://localhost:8000/service_types/{service_type}/service_plans/{plan.get('service_plan')}"
+                'url': f"{BASEURL}/service_types/{service_type}/service_plans/{plan.get('service_plan')}"
             }
             for plan in service_types.get(service_type).get('service_plans') if plan.get('service_plan') != plan
         ]
@@ -114,10 +116,10 @@ def service_plan(service_type, plan):
         "nav": MAIN_NAVI,
         'service_type': {
             'name': service_type,
-            'url': f"http://localhost:8000/service_types/{service_type}"
+            'url': f"{BASEURL}/service_types/{service_type}"
         },
         "all_plans": {
-            "url": f"http://localhost:8000/service_types/{service_type}/service_plans"
+            "url": f"{BASEURL}/service_types/{service_type}/service_plans"
         },
         "plan": plans.pop()
     }
@@ -129,7 +131,7 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
         if page is None or int(page) < 1:
             page = 1
 
-    url = f"http://localhost:8000/service_types/{service_type}/service_plans/{plan}/regions?"
+    url = f"{BASEURL}/service_types/{service_type}/service_plans/{plan}/regions?"
 
     FIELDS = {"id", "disk_space_mb", "price_usd", "node_memory_mb"}
     _service_plans = aiven.get_service_types().get('service_types', {}).get(service_type).get('service_plans', {})
@@ -177,8 +179,8 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
     return {
         "meta": {
             "navi": {
-                "all_plans": f"http://localhost:8000/service_types/{service_type}/service_plans",
-                "this_plan": f"http://localhost:8000/service_types/{service_type}/service_plans/{plan}",
+                "all_plans": f"{BASEURL}/service_types/{service_type}/service_plans",
+                "this_plan": f"{BASEURL}/service_types/{service_type}/service_plans/{plan}",
             },
             "filtering": {
                 "is_filtered": filter is not None,
