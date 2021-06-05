@@ -2,13 +2,27 @@ from os import environ as env
 from collections import OrderedDict
 from itertools import islice
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 import uvicorn
 from app import aiven
 from app import basic_types as types
 from app import responses
+from app import models
 
-app = FastAPI()
+response_codes = {
+    404: {"description": "Item not found"},
+    302: {"description": "The item was moved"},
+    403: {"description": "Not enough privileges"},
+}
+
+tags_metadata = [
+    {
+        "name": "service",
+        "description": "Service description"
+    }
+]
+app = FastAPI(openapi_tags=tags_metadata)
 
 HOST = env.get("HOST", "localhost")
 PORT = env.get("PORT", "8000")
@@ -18,6 +32,7 @@ MAIN_NAVI = {
     'docs': f"{BASEURL}{app.docs_url}",
     'redoc': f"{BASEURL}/redoc",
     'home': f"{BASEURL}/",
+    "service": f"{BASEURL}/service",
     "service_types": f"{BASEURL}/service_types",
 }
 
@@ -41,7 +56,7 @@ def service_types():
     }
 
 
-@app.get("/service_types/{service_type}")
+@app.get("/service_types/{service_type}", responses=response_codes)
 def service_type(service_type: types.ServiceType):
     service_types = aiven.get_service_types().get('service_types', {})
     if service_type.value in service_types:
@@ -71,7 +86,8 @@ def service_type(service_type: types.ServiceType):
         },
     }
 
-@app.get("/service_types/{service_type}/versions")
+
+@app.get("/service_types/{service_type}/versions", responses=response_codes)
 def service_versions(service_type):
     return {
         "nav": MAIN_NAVI,
@@ -82,7 +98,8 @@ def service_versions(service_type):
         "versions": aiven.get_service_versions(service_type)
     }
 
-@app.get("/service_types/{service_type}/service_plans")
+
+@app.get("/service_types/{service_type}/service_plans", responses=response_codes)
 def service_plans(service_type):
     service_types = aiven.get_service_types().get('service_types', {})
     plans = {
@@ -102,7 +119,7 @@ def service_plans(service_type):
     return plans
 
 
-@app.get("/service_types/{service_type}/service_plans/{plan}")
+@app.get("/service_types/{service_type}/service_plans/{plan}", responses=response_codes)
 def service_plan(service_type, plan):
     serfice_types = aiven.get_service_types().get('service_types', {})
     plans = [p for p in serfice_types.get(service_type).get('service_plans') if p.get('service_plan') == plan]
@@ -120,7 +137,7 @@ def service_plan(service_type, plan):
     }
 
 
-@app.get("/service_types/{service_type}/service_plans/{plan}/regions")
+@app.get("/service_types/{service_type}/service_plans/{plan}/regions", responses=response_codes)
 def service_plan_regions(service_type, plan, order_by="name", filter: str = None, page: int = None, paginate_by: int = None):
     if paginate_by:
         if page is None or int(page) < 1:
@@ -189,6 +206,39 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
         },
         "data" : ordered_list
     }
+
+
+@app.get("/projects", response_model=models.ProjectList, responses=response_codes)
+def projects_list():
+    return models.ProjectList()
+
+
+@app.get("/project/{project}", response_model=models.Project, responses=response_codes)
+def project():
+    return models.Project()
+
+
+@app.get("/project/{project}/services", response_model=models.ServiceLightList, responses=response_codes)
+def service_list(project):
+    """List of services of this project"""
+    return models.ServiceLightList()
+
+
+@app.get("/service/{service_name}", response_model=models.Service, responses=response_codes)
+def service(service_name):
+    """
+    Detailed service resource. Any endpoint returning potentially large list of items need to requested separately
+    and can be paginated.
+    """
+    return models.Service()
+
+
+@app.get("/service/{service_name}/backups", response_model=models.BackupList)
+def service_backups(service_name: models.ServiceName):
+    """
+    Available backups for the service
+    """
+    return models.BackupList()
 
 
 def _find_plan(_service_plans, plan):
