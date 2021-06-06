@@ -168,3 +168,40 @@ class ProjectList(AivenBaseModel):
 class Project(AivenBaseModel):
     name: str
     services: ServiceLightList
+
+
+class DatabaseListItem(BaseModel):
+    database_name: str
+
+
+class DatabaseList(PaginatedAivenBaseModel):
+    items: List[DatabaseListItem] = []
+
+
+class ServiceUserListItem(BaseModel):
+    pass
+
+
+class ServiceUserList(PaginatedAivenBaseModel):
+    items: List[ServiceUserListItem] = []
+
+
+class IntegrationType(Enum):
+    replication = "replication"
+    logs = "logs"
+    metrics = "metrics"
+
+
+class Endpoint(BaseModel):
+    name: str
+    href: AnyUrl
+
+
+class ServiceIntegrationsListItem(BaseModel):
+    integration_type = IntegrationType
+    target_endpoint = Endpoint
+    source_endpoint = Endpoint
+
+
+class ServiceIntegrationsList(PaginatedAivenBaseModel):
+    items: List[ServiceIntegrationsListItem] = []

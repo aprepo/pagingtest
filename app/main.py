@@ -18,11 +18,39 @@ response_codes = {
 
 tags_metadata = [
     {
-        "name": "service",
-        "description": "Service description"
+        "name": "Service",
+        "description": "<p>Basic unit of Aiven ecosystem is Service.</p>"
+                       "<p>The service is a runtime instance of a service plan, basically a database cluster. "
+                       "Depending on the plan, the service can consist of one or more different nodes, ie. virtual "
+                       "machines.</p>"
+                       "<p>"
+                       "</p>"
+    },
+    {
+        "name": "Service type",
+        "description": "<p>Aiven supports multiple types of services. Each service type has multiple levels of plans "
+                       "with different sets of resources and pricing.</p>"
+                       "<p>Some types of services support multiple versions, others are offered by Aiven as the current"
+                       "version basis, where Aiven will always make sure the service is following the latest stable and"
+                       "best version available.</p>"
+    },
+    {
+        "name": "Project",
+        "description": "Project description goes here"
     }
 ]
-app = FastAPI(openapi_tags=tags_metadata)
+app = FastAPI(
+    title="Aiven API", version="RC-2.0",
+    openapi_tags=tags_metadata,
+    description="<p>McDonalds version (ie. not serious draft) of the possible way to split the Aiven API.</p>"
+                "<p>Original API docs at: <a href='https://api.aiven.io/doc/'>https://api.aiven.io/doc/</a></p>"
+                "<p>Target to improve in this proposal:"
+                "<ul>"
+                "<li>Split the Service to smaller sets of data</li>"
+                "<li>New Service List endpoint that returns links to more detailed Service endpoints</li>"
+                "<li>HATEOAS approach: provide links to other endpoints where approperiate</li>"
+                "</ul>"
+)
 
 HOST = env.get("HOST", "localhost")
 PORT = env.get("PORT", "8000")
@@ -45,7 +73,7 @@ def index():
     }
 
 
-@app.get("/service_types", response_model=responses.ServiceTypeListResponse)
+@app.get("/service_types", response_model=responses.ServiceTypeListResponse, tags=["Service type"])
 def service_types():
     service_types = aiven.get_service_types()
     return {
@@ -56,7 +84,7 @@ def service_types():
     }
 
 
-@app.get("/service_types/{service_type}", responses=response_codes)
+@app.get("/service_types/{service_type}", responses=response_codes, tags=["Service type"])
 def service_type(service_type: types.ServiceType):
     service_types = aiven.get_service_types().get('service_types', {})
     if service_type.value in service_types:
@@ -87,8 +115,8 @@ def service_type(service_type: types.ServiceType):
     }
 
 
-@app.get("/service_types/{service_type}/versions", responses=response_codes)
-def service_versions(service_type):
+@app.get("/service_types/{service_type}/versions", responses=response_codes, tags=["Service type"])
+def service_type_versions(service_type):
     return {
         "nav": MAIN_NAVI,
         "service_type": {
@@ -99,8 +127,8 @@ def service_versions(service_type):
     }
 
 
-@app.get("/service_types/{service_type}/service_plans", responses=response_codes)
-def service_plans(service_type):
+@app.get("/service_types/{service_type}/service_plans", responses=response_codes, tags=["Service type"])
+def service_type_plans(service_type):
     service_types = aiven.get_service_types().get('service_types', {})
     plans = {
         "nav": MAIN_NAVI,
@@ -119,8 +147,8 @@ def service_plans(service_type):
     return plans
 
 
-@app.get("/service_types/{service_type}/service_plans/{plan}", responses=response_codes)
-def service_plan(service_type, plan):
+@app.get("/service_types/{service_type}/service_plans/{plan}", responses=response_codes, tags=["Service type"])
+def service_type_plan(service_type, plan):
     serfice_types = aiven.get_service_types().get('service_types', {})
     plans = [p for p in serfice_types.get(service_type).get('service_plans') if p.get('service_plan') == plan]
     assert len(plans) == 1
@@ -137,7 +165,7 @@ def service_plan(service_type, plan):
     }
 
 
-@app.get("/service_types/{service_type}/service_plans/{plan}/regions", responses=response_codes)
+@app.get("/service_types/{service_type}/service_plans/{plan}/regions", responses=response_codes, tags=["Service plan"])
 def service_plan_regions(service_type, plan, order_by="name", filter: str = None, page: int = None, paginate_by: int = None):
     if paginate_by:
         if page is None or int(page) < 1:
@@ -208,23 +236,24 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
     }
 
 
-@app.get("/projects", response_model=models.ProjectList, responses=response_codes)
+@app.get("/projects", response_model=models.ProjectList, responses=response_codes, tags=["Project"])
 def projects_list():
     return models.ProjectList()
 
 
-@app.get("/project/{project}", response_model=models.Project, responses=response_codes)
+@app.get("/project/{project}", response_model=models.Project, responses=response_codes, tags=["Project"])
 def project():
     return models.Project()
 
 
-@app.get("/project/{project}/services", response_model=models.ServiceLightList, responses=response_codes)
-def service_list(project):
+@app.get("/project/{project}/services", response_model=models.ServiceLightList, responses=response_codes,
+         tags=["Project"])
+def project_service_list(project):
     """List of services of this project"""
     return models.ServiceLightList()
 
 
-@app.get("/service/{service_name}", response_model=models.Service, responses=response_codes)
+@app.get("/service/{service_name}", response_model=models.Service, responses=response_codes, tags=["Service"])
 def service(service_name):
     """
     Detailed service resource. Any endpoint returning potentially large list of items need to requested separately
@@ -233,12 +262,36 @@ def service(service_name):
     return models.Service()
 
 
-@app.get("/service/{service_name}/backups", response_model=models.BackupList)
+@app.get("/service/{service_name}/backups", response_model=models.BackupList, responses=response_codes, tags=["Service"])
 def service_backups(service_name: models.ServiceName):
     """
     Available backups for the service
     """
     return models.BackupList()
+
+
+@app.get("/service/{service_name}/databases", response_model=models.DatabaseList, responses=response_codes, tags=["Service"])
+def service_databases(service_name: models.ServiceName):
+    """
+    Available backups for the service
+    """
+    return models.DatabaseList()
+
+
+@app.get("/service/{service_name}/users", response_model=models.ServiceUserList, responses=response_codes, tags=["Service"])
+def service_users(service_name: models.ServiceName):
+    """
+    Users of the service
+    """
+    return models.ServiceUserList()
+
+
+@app.get("/service/{service_name}/integrations", response_model=models.ServiceIntegrationsList, responses=response_codes, tags=["Service"])
+def service_integrations(service_name: models.ServiceName):
+    """
+    Users of the service
+    """
+    return models.ServiceIntegrationsList()
 
 
 def _find_plan(_service_plans, plan):
