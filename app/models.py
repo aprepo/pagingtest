@@ -5,9 +5,10 @@ from pydantic import BaseModel, AnyUrl, Field
 
 
 class AivenBaseModel(BaseModel):
-    response_created_at: datetime = Field(
-        description="UTC Timestamp when this REST response was created on the server"
-    )
+    #response_created_at: datetime = Field(
+    #    description="UTC Timestamp when this REST response was created on the server"
+    #)
+    pass
 
 
 class PaginatedAivenBaseModel(AivenBaseModel):
@@ -16,6 +17,11 @@ class PaginatedAivenBaseModel(AivenBaseModel):
     next: int = Field(description="Next page")
     count: int = Field(description="Total count of items")
     page_count: int = Field(description="Total count of pages available")
+
+
+class Link(BaseModel):
+    href: AnyUrl
+    title: Optional[str] = None
 
 
 class ServiceType(Enum):
@@ -113,17 +119,29 @@ class ServiceName(str):
     pass
 
 
-class ServiceLightListItem(AivenBaseModel):
+class ServiceLinks(BaseModel):
+    self: Link
+    integrations: Link
+    databases: Link
+    backups: Link
+    users: Link
+    service_details: Optional[Link] = Field(
+        description="Service type specific endpoint with more details and actions."
+    )
+
+
+class ServiceLightListItem(BaseModel):
     service_name: ServiceName
     service_type: ServiceType
     service_type_description: str
     service_state: ServiceState
     service_details: AnyUrl
+    links : ServiceLinks = Field(alias="_links")
 
 
 class ServiceLightList(PaginatedAivenBaseModel):
     total_service_count: int
-    services: ServiceLightListItem
+    services: List[ServiceLightListItem] = []
 
 
 class Service(AivenBaseModel):
@@ -138,12 +156,9 @@ class Service(AivenBaseModel):
     maintenance: Maintenance
     metadata: ServiceMetadata
     notifications: List[Notification] = []
-    integrations: AnyUrl = Field(description="Reference to endpoint with list of all integrations related to this service")
-    databases: AnyUrl = Field(description="Reference to endpoint with list of all database instances related to this service")
-    backups: AnyUrl = Field(description="Reference to endpoint with list of all backups of this service")
-    users: AnyUrl = Field(description="Reference to endpoint with list of all service users related to this service")
     features: List[str] = []
-    created_at: datetime  = Field(description="Service (instance) creation time, UTC time")
+    created_at: datetime = Field(description="Service (instance) creation time, UTC time")
+    links : ServiceLinks = Field(alias="_links")
 
 
 class Backup(BaseModel):
@@ -205,3 +220,28 @@ class ServiceIntegrationsListItem(BaseModel):
 
 class ServiceIntegrationsList(PaginatedAivenBaseModel):
     items: List[ServiceIntegrationsListItem] = []
+
+
+class KafkaTopicLinks(BaseModel):
+    messages: Link
+
+
+class KafkaTopic(BaseModel):
+    name: str
+    links: KafkaTopicLinks
+
+
+class KafkaTopics(PaginatedAivenBaseModel):
+    topics: List[KafkaTopic]
+
+
+class KafkaServiceLinks(BaseModel):
+    self: Link
+    parent: Link
+    acl: Link
+    connectors: Link
+    topics: Link
+
+
+class Kafka(AivenBaseModel):
+    links: KafkaServiceLinks = Field(alias="_links")

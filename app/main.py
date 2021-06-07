@@ -37,6 +37,10 @@ tags_metadata = [
     {
         "name": "Project",
         "description": "Project description goes here"
+    },
+    {
+        "name": "Kafka",
+        "description": "Kafka service details"
     }
 ]
 app = FastAPI(
@@ -292,6 +296,19 @@ def service_integrations(service_name: models.ServiceName):
     Users of the service
     """
     return models.ServiceIntegrationsList()
+
+
+@app.get("/service/{service_name}/kafka", response_model=models.Kafka, responses=response_codes, tags=["Kafka"])
+def kafka_service(service_name: models.ServiceName):
+    """
+    Kafka specific service data
+    """
+    return models.Kafka()
+
+
+@app.get("/service/{service_name}/kafka/topics", response_model=models.KafkaTopics, responses=response_codes, tags=["Kafka"])
+def kafka_topics(service_name: models.ServiceName):
+    return models.KafkaTopics()
 
 
 def _find_plan(_service_plans, plan):
