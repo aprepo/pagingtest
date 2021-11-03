@@ -1,13 +1,18 @@
 import requests
+import requests_cache
+from requests_cache import CachedSession
+import logging
 
+
+session = CachedSession('shared_cache', backend='memory')
 
 def get_service_types():
-    response = requests.get("https://api.aiven.io/v1/service_types")
-    return response.json()
+    response = session.get("https://api.aiven.io/v1/service_types")
+    return response.json(), response.from_cache
 
 
 def get_service_versions(service_name=None):
-    response = requests.get("https://api.aiven.io/v1/service_versions")
+    response = session.get("https://api.aiven.io/v1/service_versions")
     versions = response.json().get("service_versions")
     if service_name:
         versions = {

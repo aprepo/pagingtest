@@ -12,4 +12,5 @@ class AivenIndexResponse(AivenResponse):
 
 
 class ServiceTypeListResponse(AivenResponse):
+    from_cache: bool
     service_types: List[types.ServiceTypeListItem]

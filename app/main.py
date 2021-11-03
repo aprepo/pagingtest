@@ -79,9 +79,10 @@ def index():
 
 @app.get("/service_types", response_model=responses.ServiceTypeListResponse, tags=["Service type"])
 def service_types():
-    service_types = aiven.get_service_types()
+    service_types, from_cache = aiven.get_service_types()
     return {
         "nav": MAIN_NAVI,
+        "from_cache": from_cache,
         'service_types': [
             {'name': key, 'url': f"{BASEURL}/service_types/{key}"} for key in service_types["service_types"].keys()
         ]
@@ -90,7 +91,8 @@ def service_types():
 
 @app.get("/service_types/{service_type}", responses=response_codes, tags=["Service type"])
 def service_type(service_type: types.ServiceType):
-    service_types = aiven.get_service_types().get('service_types', {})
+    service_types, from_cache = aiven.get_service_types()
+    service_types = service_types.get('service_types', {})
     if service_type.value in service_types:
         properties = service_types.get(service_type.value)
     else:
@@ -98,6 +100,7 @@ def service_type(service_type: types.ServiceType):
     _plans_base_url = f"{BASEURL}/service_types/{service_type.value}/service_plans/"
     return {
         "nav": MAIN_NAVI,
+        "from_cache": from_cache,
         "service_type": {
             "name": service_type.value,
             "description": properties.get("description"),
@@ -133,9 +136,11 @@ def service_type_versions(service_type):
 
 @app.get("/service_types/{service_type}/service_plans", responses=response_codes, tags=["Service type"])
 def service_type_plans(service_type):
-    service_types = aiven.get_service_types().get('service_types', {})
+    service_types, from_cache = aiven.get_service_types()
+    service_types = service_types.get('service_types', {})
     plans = {
         "nav": MAIN_NAVI,
+        "from_cache": from_cache,
         'service_type': {
             'name': service_type,
             'url': f"{BASEURL}/service_types/{service_type}"
@@ -153,8 +158,9 @@ def service_type_plans(service_type):
 
 @app.get("/service_types/{service_type}/service_plans/{plan}", responses=response_codes, tags=["Service type"])
 def service_type_plan(service_type, plan):
-    serfice_types = aiven.get_service_types().get('service_types', {})
-    plans = [p for p in serfice_types.get(service_type).get('service_plans') if p.get('service_plan') == plan]
+    service_types, from_cache = aiven.get_service_types()
+    service_types = service_types.get('service_types', {})
+    plans = [p for p in service_types.get(service_type).get('service_plans') if p.get('service_plan') == plan]
     assert len(plans) == 1
     return {
         "nav": MAIN_NAVI,
@@ -178,7 +184,9 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
     url = f"{BASEURL}/service_types/{service_type}/service_plans/{plan}/regions?"
 
     FIELDS = {"id", "disk_space_mb", "price_usd", "node_memory_mb"}
-    _service_plans = aiven.get_service_types().get('service_types', {}).get(service_type).get('service_plans', {})
+    service_types, from_cache = aiven.get_service_types()
+    service_types = service_types.get('service_types', {})
+    _service_plans = service_types.get(service_type).get('service_plans', {})
     p = _find_plan(_service_plans, plan)
 
     regions: dict = p.get("regions", dict())
@@ -323,6 +331,7 @@ def pagelink(url, paginate_by, page_num):
 
 
 def main():
+    aiven.install_cache()
     uvicorn.run(app)
 
 
