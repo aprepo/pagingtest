@@ -4,11 +4,15 @@ from itertools import islice
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+from starlette.requests import Request
 import uvicorn
+import logging
 from app import aiven
 from app import basic_types as types
 from app import responses
 from app import models
+
+logger = logging.getLogger("myapp")
 
 response_codes = {
     404: {"description": "Item not found"},
@@ -66,6 +70,7 @@ MAIN_NAVI = {
     'home': f"{BASEURL}/",
     "service": f"{BASEURL}/service",
     "service_types": f"{BASEURL}/service_types",
+    "projects": f"{BASEURL}/projects",
 }
 
 
@@ -73,7 +78,8 @@ MAIN_NAVI = {
 def index():
     return {
         "nav": MAIN_NAVI,
-        "service_types": f"{BASEURL}/service_types"
+        "service_types": f"{BASEURL}/service_types",
+        "projects": f"{BASEURL}/projects",
     }
 
 
@@ -164,6 +170,7 @@ def service_type_plan(service_type, plan):
     assert len(plans) == 1
     return {
         "nav": MAIN_NAVI,
+        "from_cache": from_cache,
         'service_type': {
             'name': service_type,
             'url': f"{BASEURL}/service_types/{service_type}"
@@ -248,9 +255,21 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
     }
 
 
-@app.get("/projects", response_model=models.ProjectList, responses=response_codes, tags=["Project"])
-def projects_list():
-    return models.ProjectList()
+@app.get("/projects", responses=response_codes, tags=["Project"])
+def projects_list(request: Request):
+    token = request.headers.get('authorization', None)
+    if token:
+        try:
+            projects, from_cache = aiven.get_projects(token=token)
+            return { 
+                "from_cache": from_cache,
+                "projects": projects,
+                }
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=str(e))
+    else:
+        logger.warn("No token")
+        raise HTTPException(status_code=403, detail="Missing BEARER token")
 
 
 @app.get("/project/{project}", response_model=models.Project, responses=response_codes, tags=["Project"])
@@ -331,7 +350,6 @@ def pagelink(url, paginate_by, page_num):
 
 
 def main():
-    aiven.install_cache()
     uvicorn.run(app)
 
 

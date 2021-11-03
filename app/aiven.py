@@ -1,10 +1,14 @@
 import requests
 import requests_cache
 from requests_cache import CachedSession
+import hashlib
 import logging
+
+logger = logging.getLogger("aiven-connector")
 
 
 session = CachedSession('shared_cache', backend='memory')
+private_sessions = {}    # Way too simple session cache
 
 def get_service_types():
     response = session.get("https://api.aiven.io/v1/service_types")
@@ -31,3 +35,23 @@ def get_service_versions(service_name=None):
             for version in versions if version.get("service_type") == service_name
         }
     return versions
+
+def _get_private_session(token):
+    key = hashlib.sha256(token.encode('utf-8')).hexdigest()
+    if key in private_sessions:
+        return private_sessions[key]
+    else:
+        logger.info(f"Creating cached session for hash {key}")
+        private_sessions[key] = CachedSession(key, backend="memory", expire_after=60)
+        return private_sessions[key]
+
+def get_projects(token):
+    session = _get_private_session(token)
+    headers = {
+        'authorization': token
+    }
+    response = session.get('https://api.aiven.io/v1/project', headers=headers)
+    if response:
+        return response.json(), response.from_cache
+    else:
+        raise Exception(response.json())
