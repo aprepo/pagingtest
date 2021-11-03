@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any
 from pydantic import BaseModel, AnyUrl
 
 
@@ -22,6 +23,10 @@ class AivenNavi(BaseModel):
     docs: AnyUrl
     redoc: AnyUrl
     home: AnyUrl
+    service_types: AnyUrl
+    accounts: AnyUrl
+    projects: AnyUrl
+    services: AnyUrl
 
 
 class ServiceTypeListItem(BaseModel):

@@ -8,8 +8,7 @@ class AivenResponse(BaseModel):
 
 
 class AivenIndexResponse(AivenResponse):
-    service_types: AnyUrl
-    projects: AnyUrl
+    pass
 
 
 class ServiceTypeListResponse(AivenResponse):

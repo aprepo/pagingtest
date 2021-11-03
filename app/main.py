@@ -68,10 +68,19 @@ MAIN_NAVI = {
     'docs': f"{BASEURL}{app.docs_url}",
     'redoc': f"{BASEURL}/redoc",
     'home': f"{BASEURL}/",
-    "service": f"{BASEURL}/service",
     "service_types": f"{BASEURL}/service_types",
+    "accounts": f"{BASEURL}/accounts",
     "projects": f"{BASEURL}/projects",
+    "services": f"{BASEURL}/services",
 }
+
+
+def _get_token(request: Request):
+    token = request.headers.get('authorization', None)
+    if token:
+        return token
+    else:
+        raise HTTPException(status_code=403, detail="No BEARER token")
 
 
 @app.get("/", response_model=responses.AivenIndexResponse)
@@ -257,24 +266,42 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
 
 @app.get("/projects", responses=response_codes, tags=["Project"])
 def projects_list(request: Request):
-    token = request.headers.get('authorization', None)
-    if token:
-        try:
-            projects, from_cache = aiven.get_projects(token=token)
-            return { 
-                "from_cache": from_cache,
-                "projects": projects,
-                }
-        except Exception as e:
-            raise HTTPException(status_code=404, detail=str(e))
-    else:
-        logger.warn("No token")
-        raise HTTPException(status_code=403, detail="Missing BEARER token")
-
-
+    token = _get_token(request)
+    try:
+        projects, from_cache = aiven.get_projects(token=token)
+        return { 
+            "nav": MAIN_NAVI,
+            "projects": projects,
+            }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    
 @app.get("/project/{project}", response_model=models.Project, responses=response_codes, tags=["Project"])
 def project():
     return models.Project()
+
+@app.get("/accounts/", responses=response_codes, tags=["Account"])
+def accounts(request: Request):
+    token = _get_token(request)
+    try:
+        accounts, from_cache = aiven.get_accounts(token)
+        return {
+            'nav': MAIN_NAVI,
+            'from_cache': from_cache,
+            'accounts': accounts,
+        } 
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/accounts/{account}/", responses=response_codes, tags=["Account"])
+def account(account: str, request: Request):
+    raise HTTPException(status_code=501, detail=f"Not implemented. Got account name: {account}.")
+
+
+@app.get("/accounts/{account}/projects/{project}/", responses=response_codes, tags=["Account"])
+def account_project(account: str, project: str, request: Request):
+    raise HTTPException(status_code=501, detail=f"Not implemented. Account: {account}, Project: {project}")
 
 
 @app.get("/project/{project}/services", response_model=models.ServiceLightList, responses=response_codes,
