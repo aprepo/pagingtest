@@ -263,13 +263,14 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
     }
 
 
-@app.get("/projects", responses=response_codes, tags=["Project"])
+@app.get("/projects", response_model=responses.ProjectListResponse, responses=response_codes, tags=["Project"])
 def projects_list(request: Request):
     token = _get_token(request)
     try:
         projects, from_cache = _projects.get_projects(token=token)
         return { 
             "nav": MAIN_NAVI,
+            "from_cache": from_cache,
             "projects": projects,
             }
     except Exception as e:

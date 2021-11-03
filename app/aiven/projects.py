@@ -34,6 +34,7 @@ def get_projects(token):
                 'billing': {
                     'billing_group_id': project.get('billing_group_id', None),
                     'billing_group_name': project.get('billing_group_name', None),
+                    'state': "active_trial",
                     "url": _billing_group_url_or_none(
                         project.get('account_id', None), 
                         project.get('billing_group_id')
