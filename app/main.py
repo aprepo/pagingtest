@@ -1,4 +1,4 @@
-from os import environ as env
+from os import environ as env, stat
 from collections import OrderedDict
 from itertools import islice
 
@@ -320,7 +320,20 @@ def project_service_list(project):
     return models.ServiceLightList()
 
 
-@app.get("/service/{service_name}", response_model=models.Service, responses=response_codes, tags=["Service"])
+@app.get("/services", responses=response_codes, tags=["Service"])
+def services(request: Request, project=None):
+    token = _get_token(request)
+    if project:
+        response = aiven.get_services(token=token, projects=[project, ])
+    else:
+        response = aiven.get_services(token=token)
+    return {
+        'navi': MAIN_NAVI,
+        'summary': { 'service_count' : len(response)},
+        'services': response
+    }
+
+@app.get("/services/{service_name}", response_model=models.Service, responses=response_codes, tags=["Service"])
 def service(service_name):
     """
     Detailed service resource. Any endpoint returning potentially large list of items need to requested separately

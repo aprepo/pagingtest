@@ -115,11 +115,20 @@ def get_projects(token):
                         project.get('account_id', None), 
                         project.get('billing_group_id')
                         )
-                }
+                },
+                'services': f"{BASEURL}/services?project={project.get('project_name')}"
             })
         return return_value, response.from_cache
     else:
         raise Exception(response.json())
+
+def get_services_for_project(token, project):
+    session = _get_private_session(token)
+    headers = _get_headers(token)
+    response = session.get(f"https://api.aiven.io/v1/project/{project}/service", headers=headers)
+    services = [s.get('service_name') for s in response.json().get('services')]
+    return services, response.from_cache
+
 
 def get_services(token, projects=[]):
     """
@@ -130,11 +139,15 @@ def get_services(token, projects=[]):
 
     return_value = []
 
-    if not projects:
-        projects = get_projects(token)
+    if projects:
+        pass
+    else:
+        json_data, from_cache = get_projects(token)
+        projects = [p.get('project_name') for p in json_data.get('projects')]
 
-    for project_name in projects:
-        services = get_services(token, project_name)
+    for project in projects:
+        print(f"Project: {project}")
+        services, _ = get_services_for_project(token, project)
         for service in services:
             return_value.append(
                 {
@@ -143,12 +156,12 @@ def get_services(token, projects=[]):
                         "url": "NOT IMPLEMENTED"
                     },
                     "project": { 
-                        "name": project_name, 
-                        "url": f"{BASEURL}/projects/{project_name}/"
+                        "name": project, 
+                        "url": f"{BASEURL}/projects/{project}/"
                         },
                     "service": { 
                         "name": service, 
-                        "url": f"{BASEURL}/projects/{project_name}/services/{service}/"
+                        "url": f"{BASEURL}/projects/{project}/services/{service}/"
                         }
                 }
             )
