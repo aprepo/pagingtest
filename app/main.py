@@ -291,12 +291,21 @@ def accounts(request: Request):
             'accounts': accounts,
         } 
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/accounts/{account}/", responses=response_codes, tags=["Account"])
-def account(account: str, request: Request):
-    raise HTTPException(status_code=501, detail=f"Not implemented. Got account name: {account}.")
+@app.get("/accounts/{account_id}/", responses=response_codes, tags=["Account"])
+def account(account_id: str, request: Request):
+    token = _get_token(request)
+    try:
+        account, from_cache = aiven.get_account(token, account_id)
+        return {
+            'nav': MAIN_NAVI,
+            'from_cache': from_cache,
+            'account': account
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/accounts/{account}/projects/{project}/", responses=response_codes, tags=["Account"])

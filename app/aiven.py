@@ -71,6 +71,13 @@ def get_accounts(token):
         accounts.append(account)
     return accounts, response.from_cache
 
+
+def get_account(token, account_id):
+    session = _get_private_session(token)
+    headers = _get_headers(token)
+    response = session.get('https://api.aiven.io/v1/account/{account_id}', headers=headers)
+    return response.json(), response.from_cache
+
 def get_projects(token):
     session = _get_private_session(token)
     headers = _get_headers(token)
