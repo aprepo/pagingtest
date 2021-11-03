@@ -13,6 +13,7 @@ class ServiceType(Enum):
     grafana = "grafana"
     influxdb = "influxdb"
     elasticsearch = "elasticsearch"
+    opensearch = "opensearch"
     kafka_connect = "kafka_connect"
     kafka_mirrormaker = "kafka_mirrormaker"
 
