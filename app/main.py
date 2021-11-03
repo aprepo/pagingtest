@@ -11,6 +11,8 @@ from app import aiven
 from app import basic_types as types
 from app import responses
 from app import models
+from app.aiven import accounts as _accounts, projects as _projects, services as _services
+from app.settings import BASEURL
 
 logger = logging.getLogger("myapp")
 
@@ -60,9 +62,6 @@ app = FastAPI(
                 "</ul>"
 )
 
-HOST = env.get("HOST", "localhost")
-PORT = env.get("PORT", "8000")
-BASEURL = env.get("BASEURL", f"http://{HOST}:{PORT}")
 
 MAIN_NAVI = {
     'docs': f"{BASEURL}{app.docs_url}",
@@ -94,7 +93,7 @@ def index():
 
 @app.get("/service_types", response_model=responses.ServiceTypeListResponse, tags=["Service type"])
 def service_types():
-    service_types, from_cache = aiven.get_service_types()
+    service_types, from_cache = _services.get_service_types()
     return {
         "nav": MAIN_NAVI,
         "from_cache": from_cache,
@@ -106,7 +105,7 @@ def service_types():
 
 @app.get("/service_types/{service_type}", responses=response_codes, tags=["Service type"])
 def service_type(service_type: types.ServiceType):
-    service_types, from_cache = aiven.get_service_types()
+    service_types, from_cache = _services.get_service_types()
     service_types = service_types.get('service_types', {})
     if service_type.value in service_types:
         properties = service_types.get(service_type.value)
@@ -145,13 +144,13 @@ def service_type_versions(service_type):
             "name": service_type,
             "url": f"{BASEURL}/service_types/{service_type}/"
         },
-        "versions": aiven.get_service_versions(service_type)
+        "versions": _services.get_service_versions(service_type)
     }
 
 
 @app.get("/service_types/{service_type}/service_plans", responses=response_codes, tags=["Service type"])
 def service_type_plans(service_type):
-    service_types, from_cache = aiven.get_service_types()
+    service_types, from_cache = _services.get_service_types()
     service_types = service_types.get('service_types', {})
     plans = {
         "nav": MAIN_NAVI,
@@ -173,7 +172,7 @@ def service_type_plans(service_type):
 
 @app.get("/service_types/{service_type}/service_plans/{plan}", responses=response_codes, tags=["Service type"])
 def service_type_plan(service_type, plan):
-    service_types, from_cache = aiven.get_service_types()
+    service_types, from_cache = _services.get_service_types()
     service_types = service_types.get('service_types', {})
     plans = [p for p in service_types.get(service_type).get('service_plans') if p.get('service_plan') == plan]
     assert len(plans) == 1
@@ -200,7 +199,7 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
     url = f"{BASEURL}/service_types/{service_type}/service_plans/{plan}/regions?"
 
     FIELDS = {"id", "disk_space_mb", "price_usd", "node_memory_mb"}
-    service_types, from_cache = aiven.get_service_types()
+    service_types, from_cache = _services.get_service_types()
     service_types = service_types.get('service_types', {})
     _service_plans = service_types.get(service_type).get('service_plans', {})
     p = _find_plan(_service_plans, plan)
@@ -268,7 +267,7 @@ def service_plan_regions(service_type, plan, order_by="name", filter: str = None
 def projects_list(request: Request):
     token = _get_token(request)
     try:
-        projects, from_cache = aiven.get_projects(token=token)
+        projects, from_cache = _projects.get_projects(token=token)
         return { 
             "nav": MAIN_NAVI,
             "projects": projects,
@@ -284,21 +283,22 @@ def project():
 def accounts(request: Request):
     token = _get_token(request)
     try:
-        accounts, from_cache = aiven.get_accounts(token)
+        accounts, from_cache = _accounts.get_accounts(token)
         return {
             'nav': MAIN_NAVI,
             'from_cache': from_cache,
             'accounts': accounts,
         } 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        #raise HTTPException(status_code=500, detail=str(e))
+        raise e
 
 
 @app.get("/accounts/{account_id}/", responses=response_codes, tags=["Account"])
 def account(account_id: str, request: Request):
     token = _get_token(request)
     try:
-        account, from_cache = aiven.get_account(token, account_id)
+        account, from_cache = _accounts.get_account(token, account_id)
         return {
             'nav': MAIN_NAVI,
             'from_cache': from_cache,
@@ -324,9 +324,9 @@ def project_service_list(project):
 def services(request: Request, project=None):
     token = _get_token(request)
     if project:
-        response = aiven.get_services(token=token, projects=[project, ])
+        response = _services.get_services(token=token, projects=[project, ])
     else:
-        response = aiven.get_services(token=token)
+        response = _services.get_services(token=token)
     return {
         'navi': MAIN_NAVI,
         'summary': { 'service_count' : len(response)},
