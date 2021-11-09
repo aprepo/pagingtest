@@ -3,6 +3,14 @@
 ## Setup env
 ```poetry shell```
 
+OR
+
+```
+python -m venv env
+source env/bin/activate
+pip install -r requirements.txt
+```
+
 ## Start process
 ```uvicorn --reload main:app```
 
