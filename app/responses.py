@@ -1,4 +1,4 @@
-from pydantic import BaseModel, AnyUrl
+from pydantic import BaseModel, AnyUrl, Field
 from typing import Any, List, Optional
 from app import basic_types as types
 from app.aiven import projects
@@ -27,3 +27,8 @@ class ProjectListResponse(BaseModel):
     from_cache: bool
     projects: ProjectList
     #projects: List[types.ProjectListItem]
+
+
+class ApiStatsResponse(BaseModel):
+    private_cache_sessions: int = Field(description="Size of the internal cache (sessions)")
+    private_cache_responses: int = Field(description="Count of individual responses in the cache")

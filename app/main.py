@@ -11,7 +11,7 @@ from app import aiven
 from app import basic_types as types
 from app import responses
 from app import models
-from app.aiven import accounts as _accounts, projects as _projects, services as _services
+from app.aiven import accounts as _accounts, cache, projects as _projects, services as _services
 from app.settings import BASEURL
 
 logger = logging.getLogger("myapp")
@@ -47,6 +47,10 @@ tags_metadata = [
     {
         "name": "Kafka",
         "description": "Kafka service details"
+    },
+    {
+        "name": "API stats",
+        "description": "Statiscics and metrics of the API itself, such as size of cache."
     }
 ]
 app = FastAPI(
@@ -88,6 +92,13 @@ def index():
         "nav": MAIN_NAVI,
         "service_types": f"{BASEURL}/service_types",
         "projects": f"{BASEURL}/projects",
+    }
+
+@app.get("/api/stats", response_model=responses.ApiStatsResponse, tags=['API stats'])
+def api_stats(request: Request): 
+    return {
+        "private_cache_sessions": cache.get_cache_session_count(),
+        "private_cache_responses": cache.get_cache_response_count()
     }
 
 
